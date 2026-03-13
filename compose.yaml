@@ -12,9 +12,12 @@ services:
     networks:
       - ecommerce-network
     depends_on:
-      - users-service
-      - products-service
-      - orders-service
+      users-service:
+        condition: service_healthy
+      products-service:
+        condition: service_healthy
+      orders-service:
+        condition: service_healthy
 
   users-service:
     build: ./users-service
@@ -23,8 +26,16 @@ services:
       - "5001"
     networks:
       - ecommerce-network
+      - users-db-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5001/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     depends_on:
-      - postgres-users
+      postgres-users:
+        condition: service_healthy
 
   products-service:
     build: ./products-service
@@ -33,8 +44,16 @@ services:
       - "5002"
     networks:
       - ecommerce-network
+      - products-db-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5002/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     depends_on:
-      - postgres-products
+      postgres-products:
+        condition: service_healthy
 
   orders-service:
     build: ./orders-service
@@ -43,47 +62,76 @@ services:
       - "5003"
     networks:
       - ecommerce-network
+      - orders-db-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5003/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     depends_on:
-      - postgres-orders
+      postgres-orders:
+        condition: service_healthy
 
   postgres-users:
     image: postgres:15
     restart: unless-stopped
     environment:
-      POSTGRES_DB: users
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ${POSTGRES_USERS_DB}
+      POSTGRES_USER: ${POSTGRES_USERS_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_USERS_PASSWORD}
     volumes:
       - users-data:/var/lib/postgresql/data
     networks:
-      - ecommerce-network
+      - users-db-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   postgres-products:
     image: postgres:15
     restart: unless-stopped
     environment:
-      POSTGRES_DB: products
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ${POSTGRES_PRODUCTS_DB}
+      POSTGRES_USER: ${POSTGRES_PRODUCTS_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PRODUCTS_PASSWORD}
     volumes:
       - products-data:/var/lib/postgresql/data
     networks:
-      - ecommerce-network
+      - products-db-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   postgres-orders:
     image: postgres:15
     restart: unless-stopped
     environment:
-      POSTGRES_DB: orders
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ${POSTGRES_ORDERS_DB}
+      POSTGRES_USER: ${POSTGRES_ORDERS_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_ORDERS_PASSWORD}
     volumes:
       - orders-data:/var/lib/postgresql/data
     networks:
-      - ecommerce-network
+      - orders-db-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
 networks:
   ecommerce-network:
+  users-db-network:
+  products-db-network:
+  orders-db-network:
 
 volumes:
   users-data:

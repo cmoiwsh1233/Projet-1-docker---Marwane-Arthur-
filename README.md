@@ -1,83 +1,80 @@
 # ecommerce-microservices
 
-Architecture microservices simple avec :
+Petit projet e-commerce en microservices.
+
+Dedans t'as :
 
 - une gateway Nginx
-- trois APIs Flask : `users-service`, `products-service`, `orders-service`
-- trois bases PostgreSQL dédiées
+- un service users
+- un service products
+- un service orders
+- une base Postgres pour chaque service
 
-## Prerequis
+## Ce qu'il faut
 
 - Docker
 - Docker Compose
 
-## Lancer le projet
+## Comment lancer le projet
 
-Depuis la racine du repo :
+Tu te mets a la racine du repo et tu lances :
 
 ```bash
 docker compose up -d --build
 ```
 
-La gateway sera disponible sur :
+Apres ca, tu peux ouvrir :
 
 ```text
 http://localhost
 ```
 
-## Arreter le projet
+Le front HTML est servi par la gateway.
+
+## Si tu veux tout couper
 
 ```bash
 docker compose down
 ```
 
-Pour arreter et supprimer aussi les volumes PostgreSQL :
+Si tu veux aussi supprimer les donnees des bases :
 
 ```bash
 docker compose down -v
 ```
 
-## Redemarrer un service
+## Si t'as modifie un service
 
-Exemple pour la gateway :
+Relancer juste la gateway :
 
 ```bash
 docker compose restart gateway
 ```
 
-Exemple pour rebuild un service :
+Rebuild un service :
 
 ```bash
-docker compose up -d --build products-service
+docker compose up -d --build users-service
 ```
 
-## Architecture
+Tu peux remplacer `users-service` par `products-service`, `orders-service` ou `gateway`.
 
-Services exposes via la gateway :
+## Les urls utiles
 
-- `/api/users`
-- `/api/products`
-- `/api/orders`
+- Front : `http://localhost`
+- Users : `http://localhost/api/users`
+- Products : `http://localhost/api/products`
+- Orders : `http://localhost/api/orders`
 
-Bases de donnees internes :
+## Exemples rapides
 
-- `postgres-users`
-- `postgres-products`
-- `postgres-orders`
-
-Les bases PostgreSQL ne sont pas exposees a l'exterieur. Elles communiquent uniquement sur le reseau Docker `ecommerce-network`.
-
-## Exemples de requetes
-
-### Healthcheck
+Voir les produits :
 
 ```bash
-curl http://localhost/api/users/health
-curl http://localhost/api/products/health
-curl http://localhost/api/orders/health
+curl http://localhost/api/products
 ```
 
-### Creer un produit
+Creer un produit :
 
 ```bash
 curl -X POST http://localhost/api/products \
@@ -85,13 +82,7 @@ curl -X POST http://localhost/api/products \
   -d "{\"name\":\"Laptop\",\"price\":1200,\"stock\":5}"
 ```
 
-### Lister les produits
-
-```bash
-curl http://localhost/api/products
-```
-
-### Creer un utilisateur
+Creer un utilisateur :
 
 ```bash
 curl -X POST http://localhost/api/users \
@@ -99,10 +90,12 @@ curl -X POST http://localhost/api/users \
   -d "{\"name\":\"Alice\",\"email\":\"alice@example.com\",\"password\":\"secret\"}"
 ```
 
-## Fichiers principaux
+## En gros
 
-- `compose.yaml` : orchestration Docker Compose
-- `gateway/nginx.conf` : configuration de la gateway Nginx
-- `users-service/app.py` : API Users
-- `products-service/app.py` : API Products
-- `orders-service/app.py` : API Orders
+Le point d'entree c'est la gateway.
+
+Donc :
+
+- le front est sur `http://localhost`
+- les appels API passent par `http://localhost/api/...`
+- les bases sont internes a Docker

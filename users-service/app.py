@@ -1,4 +1,7 @@
+from datetime import date
+
 from flask import Flask, jsonify, request
+from werkzeug.security import check_password_hash, generate_password_hash
 
 
 app = Flask(__name__)
@@ -17,6 +20,15 @@ def find_user(user_id):
     return next((user for user in users if user["id"] == user_id), None)
 
 
+def serialize_user(user):
+    return {
+        "id": user["id"],
+        "username": user["username"],
+        "email": user["email"],
+        "created_at": user["created_at"],
+    }
+
+
 @app.route("/health", methods=["GET"])
 def health():
     return jsonify({"status": "ok"})
@@ -24,7 +36,7 @@ def health():
 
 @app.route("/users", methods=["GET"])
 def get_users():
-    return jsonify(users)
+    return jsonify([serialize_user(user) for user in users])
 
 
 @app.route("/users/<int:user_id>", methods=["GET"])
@@ -32,7 +44,7 @@ def get_user(user_id):
     user = find_user(user_id)
     if user is None:
         return json_error("User not found", 404)
-    return jsonify(user)
+    return jsonify(serialize_user(user))
 
 
 @app.route("/users", methods=["POST"])
@@ -43,26 +55,27 @@ def create_user():
     if not isinstance(data, dict):
         return json_error("Invalid JSON body", 400)
 
-    name = data.get("name")
+    username = data.get("username") or data.get("name")
     email = data.get("email")
     password = data.get("password")
 
-    if not name or not email or not password:
-        return json_error("Fields 'name', 'email' and 'password' are required", 400)
+    if not username or not email or not password:
+        return json_error("Fields 'username', 'email' and 'password' are required", 400)
 
     if any(user["email"] == email for user in users):
         return json_error("Email already exists", 409)
 
     user = {
         "id": next_id,
-        "name": name,
+        "username": username,
         "email": email,
-        "password": password,
+        "password_hash": generate_password_hash(password),
+        "created_at": str(date.today()),
     }
     users.append(user)
     next_id += 1
 
-    response = jsonify(user)
+    response = jsonify(serialize_user(user))
     response.status_code = 201
     return response
 
@@ -81,11 +94,15 @@ def update_user(user_id):
     if email and any(existing["email"] == email and existing["id"] != user_id for existing in users):
         return json_error("Email already exists", 409)
 
-    for field in ("name", "email", "password"):
-        if field in data and data[field]:
-            user[field] = data[field]
+    username = data.get("username") or data.get("name")
+    if username:
+        user["username"] = username
+    if email:
+        user["email"] = email
+    if data.get("password"):
+        user["password_hash"] = generate_password_hash(data["password"])
 
-    return jsonify(user)
+    return jsonify(serialize_user(user))
 
 
 @app.route("/users/<int:user_id>", methods=["DELETE"])
@@ -95,7 +112,7 @@ def delete_user(user_id):
         return json_error("User not found", 404)
 
     users.remove(user)
-    return jsonify({"message": "User deleted"})
+    return jsonify({"message": "User deleted", "user": serialize_user(user)})
 
 
 @app.route("/users/login", methods=["POST"])
@@ -114,7 +131,7 @@ def login():
         (
             stored_user
             for stored_user in users
-            if stored_user["email"] == email and stored_user["password"] == password
+            if stored_user["email"] == email and check_password_hash(stored_user["password_hash"], password)
         ),
         None,
     )
@@ -126,8 +143,9 @@ def login():
             "message": "Login successful",
             "user": {
                 "id": user["id"],
-                "name": user["name"],
+                "username": user["username"],
                 "email": user["email"],
+                "created_at": user["created_at"],
             },
         }
     )
