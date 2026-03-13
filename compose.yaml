@@ -1,0 +1,90 @@
+version: "3.9"
+
+services:
+  gateway:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./gateway/nginx.conf:/etc/nginx/nginx.conf
+    networks:
+      - ecommerce-network
+    depends_on:
+      - users-service
+      - products-service
+      - orders-service
+
+  users-service:
+    build: ./users-service
+    restart: unless-stopped
+    expose:
+      - "5001"
+    networks:
+      - ecommerce-network
+    depends_on:
+      - postgres-users
+
+  products-service:
+    build: ./products-service
+    restart: unless-stopped
+    expose:
+      - "5002"
+    networks:
+      - ecommerce-network
+    depends_on:
+      - postgres-products
+
+  orders-service:
+    build: ./orders-service
+    restart: unless-stopped
+    expose:
+      - "5003"
+    networks:
+      - ecommerce-network
+    depends_on:
+      - postgres-orders
+
+  postgres-users:
+    image: postgres:15
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: users
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - users-data:/var/lib/postgresql/data
+    networks:
+      - ecommerce-network
+
+  postgres-products:
+    image: postgres:15
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: products
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - products-data:/var/lib/postgresql/data
+    networks:
+      - ecommerce-network
+
+  postgres-orders:
+    image: postgres:15
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: orders
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - orders-data:/var/lib/postgresql/data
+    networks:
+      - ecommerce-network
+
+networks:
+  ecommerce-network:
+
+volumes:
+  users-data:
+  products-data:
+  orders-data:
