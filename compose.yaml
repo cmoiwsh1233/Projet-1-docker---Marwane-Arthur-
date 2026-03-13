@@ -8,6 +8,7 @@ services:
       - "80:80"
     volumes:
       - ./gateway/nginx.conf:/etc/nginx/nginx.conf
+      - ./frontend:/usr/share/nginx/html:ro
     networks:
       - ecommerce-network
     depends_on:

@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Microservices from Scratch</title>
+</head>
+<body>
+  <h1>Microservices from Scratch</h1>
+
+  <section>
+    <h2>Produits</h2>
+    <form id="product-form">
+      <input id="product-name" type="text" placeholder="Nom" required>
+      <input id="product-price" type="number" placeholder="Prix" required>
+      <input id="product-stock" type="number" placeholder="Stock" required>
+      <button type="submit">Ajouter un produit</button>
+    </form>
+    <form id="product-update-form">
+      <input id="product-update-id" type="number" placeholder="ID produit" required>
+      <input id="product-update-name" type="text" placeholder="Nouveau nom">
+      <input id="product-update-price" type="number" placeholder="Nouveau prix">
+      <input id="product-update-stock" type="number" placeholder="Nouveau stock">
+      <button type="submit">Modifier un produit</button>
+    </form>
+    <form id="product-delete-form">
+      <input id="product-delete-id" type="number" placeholder="ID produit" required>
+      <button type="submit">Supprimer un produit</button>
+    </form>
+    <button id="reload-products" type="button">Recharger les produits</button>
+    <pre id="products-output">Chargement...</pre>
+  </section>
+
+  <section>
+    <h2>Utilisateurs</h2>
+    <form id="user-form">
+      <input id="user-name" type="text" placeholder="Nom" required>
+      <input id="user-email" type="email" placeholder="Email" required>
+      <input id="user-password" type="password" placeholder="Mot de passe" required>
+      <button type="submit">Ajouter un utilisateur</button>
+    </form>
+    <form id="user-update-form">
+      <input id="user-update-id" type="number" placeholder="ID utilisateur" required>
+      <input id="user-update-name" type="text" placeholder="Nouveau nom">
+      <input id="user-update-email" type="email" placeholder="Nouvel email">
+      <input id="user-update-password" type="password" placeholder="Nouveau mot de passe">
+      <button type="submit">Modifier un utilisateur</button>
+    </form>
+    <form id="user-delete-form">
+      <input id="user-delete-id" type="number" placeholder="ID utilisateur" required>
+      <button type="submit">Supprimer un utilisateur</button>
+    </form>
+    <button id="reload-users" type="button">Recharger les utilisateurs</button>
+    <pre id="users-output">Chargement...</pre>
+  </section>
+
+  <section>
+    <h2>Commandes</h2>
+    <form id="order-form">
+      <input id="order-user-id" type="number" placeholder="User ID" required>
+      <input id="order-product-id" type="number" placeholder="Product ID" required>
+      <input id="order-quantity" type="number" placeholder="Quantite" required>
+      <button type="submit">Creer une commande</button>
+    </form>
+    <button id="reload-orders" type="button">Recharger les commandes</button>
+    <pre id="orders-output">Chargement...</pre>
+  </section>
+
+  <section>
+    <h2>Reponse API</h2>
+    <pre id="status-output">Pret.</pre>
+  </section>
+
+  <script>
+    async function apiRequest(path, options) {
+      const response = await fetch(path, {
+        headers: { "Content-Type": "application/json" },
+        ...options
+      });
+
+      const text = await response.text();
+      let data;
+
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch (_error) {
+        data = { raw: text };
+      }
+
+      if (!response.ok) {
+        throw new Error(JSON.stringify(data, null, 2));
+      }
+
+      return data;
+    }
+
+    function writeOutput(elementId, data) {
+      document.getElementById(elementId).textContent = JSON.stringify(data, null, 2);
+    }
+
+    function writeStatus(message) {
+      document.getElementById("status-output").textContent = message;
+    }
+
+    async function loadProducts() {
+      try {
+        const products = await apiRequest("/api/products");
+        writeOutput("products-output", products);
+      } catch (error) {
+        writeStatus("Erreur produits: " + error.message);
+      }
+    }
+
+    async function loadUsers() {
+      try {
+        const users = await apiRequest("/api/users");
+        writeOutput("users-output", users);
+      } catch (error) {
+        writeStatus("Erreur utilisateurs: " + error.message);
+      }
+    }
+
+    async function loadOrders() {
+      try {
+        const orders = await apiRequest("/api/orders");
+        writeOutput("orders-output", orders);
+      } catch (error) {
+        writeStatus("Erreur commandes: " + error.message);
+      }
+    }
+
+    document.getElementById("product-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const payload = {
+        name: document.getElementById("product-name").value,
+        price: Number(document.getElementById("product-price").value),
+        stock: Number(document.getElementById("product-stock").value)
+      };
+
+      try {
+        const result = await apiRequest("/api/products", {
+          method: "POST",
+          body: JSON.stringify(payload)
+        });
+        writeStatus("Produit cree:\n" + JSON.stringify(result, null, 2));
+        event.target.reset();
+        loadProducts();
+      } catch (error) {
+        writeStatus("Creation produit impossible:\n" + error.message);
+      }
+    });
+
+    document.getElementById("product-update-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const id = Number(document.getElementById("product-update-id").value);
+      const payload = {};
+
+      const name = document.getElementById("product-update-name").value;
+      const price = document.getElementById("product-update-price").value;
+      const stock = document.getElementById("product-update-stock").value;
+
+      if (name) {
+        payload.name = name;
+      }
+      if (price !== "") {
+        payload.price = Number(price);
+      }
+      if (stock !== "") {
+        payload.stock = Number(stock);
+      }
+
+      try {
+        const result = await apiRequest("/api/products/" + id, {
+          method: "PUT",
+          body: JSON.stringify(payload)
+        });
+        writeStatus("Produit modifie:\n" + JSON.stringify(result, null, 2));
+        event.target.reset();
+        loadProducts();
+      } catch (error) {
+        writeStatus("Modification produit impossible:\n" + error.message);
+      }
+    });
+
+    document.getElementById("product-delete-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const id = Number(document.getElementById("product-delete-id").value);
+
+      try {
+        const result = await apiRequest("/api/products/" + id, {
+          method: "DELETE"
+        });
+        writeStatus("Produit supprime:\n" + JSON.stringify(result, null, 2));
+        event.target.reset();
+        loadProducts();
+      } catch (error) {
+        writeStatus("Suppression produit impossible:\n" + error.message);
+      }
+    });
+
+    document.getElementById("user-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const payload = {
+        name: document.getElementById("user-name").value,
+        email: document.getElementById("user-email").value,
+        password: document.getElementById("user-password").value
+      };
+
+      try {
+        const result = await apiRequest("/api/users", {
+          method: "POST",
+          body: JSON.stringify(payload)
+        });
+        writeStatus("Utilisateur cree:\n" + JSON.stringify(result, null, 2));
+        event.target.reset();
+        loadUsers();
+      } catch (error) {
+        writeStatus("Creation utilisateur impossible:\n" + error.message);
+      }
+    });
+
+    document.getElementById("user-update-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const id = Number(document.getElementById("user-update-id").value);
+      const payload = {};
+
+      const name = document.getElementById("user-update-name").value;
+      const email = document.getElementById("user-update-email").value;
+      const password = document.getElementById("user-update-password").value;
+
+      if (name) {
+        payload.name = name;
+      }
+      if (email) {
+        payload.email = email;
+      }
+      if (password) {
+        payload.password = password;
+      }
+
+      try {
+        const result = await apiRequest("/api/users/" + id, {
+          method: "PUT",
+          body: JSON.stringify(payload)
+        });
+        writeStatus("Utilisateur modifie:\n" + JSON.stringify(result, null, 2));
+        event.target.reset();
+        loadUsers();
+      } catch (error) {
+        writeStatus("Modification utilisateur impossible:\n" + error.message);
+      }
+    });
+
+    document.getElementById("user-delete-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const id = Number(document.getElementById("user-delete-id").value);
+
+      try {
+        const result = await apiRequest("/api/users/" + id, {
+          method: "DELETE"
+        });
+        writeStatus("Utilisateur supprime:\n" + JSON.stringify(result, null, 2));
+        event.target.reset();
+        loadUsers();
+      } catch (error) {
+        writeStatus("Suppression utilisateur impossible:\n" + error.message);
+      }
+    });
+
+    document.getElementById("order-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const payload = {
+        user_id: Number(document.getElementById("order-user-id").value),
+        product_id: Number(document.getElementById("order-product-id").value),
+        quantity: Number(document.getElementById("order-quantity").value)
+      };
+
+      try {
+        const result = await apiRequest("/api/orders", {
+          method: "POST",
+          body: JSON.stringify(payload)
+        });
+        writeStatus("Commande creee:\n" + JSON.stringify(result, null, 2));
+        event.target.reset();
+        loadOrders();
+      } catch (error) {
+        writeStatus("Creation commande impossible:\n" + error.message);
+      }
+    });
+
+    document.getElementById("reload-products").addEventListener("click", loadProducts);
+    document.getElementById("reload-users").addEventListener("click", loadUsers);
+    document.getElementById("reload-orders").addEventListener("click", loadOrders);
+
+    loadProducts();
+    loadUsers();
+    loadOrders();
+  </script>
+</body>
+</html>
